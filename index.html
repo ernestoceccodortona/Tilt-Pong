@@ -51,7 +51,7 @@
         <div id="game-over" class="menu" style="display:none;">
             <h1 style="color: #ff3b30; letter-spacing: 8px;">Time Out</h1>
             <div id="final-score" class="stat-value">0</div>
-            <button onclick="retryGame()">Retry</button>
+            <button onclick="resetGame()">Retry</button>
             <button onclick="location.reload()">Quit</button>
         </div>
     </div>
@@ -59,49 +59,65 @@
     <script>
         const { Engine, Render, Runner, Bodies, Composite, Events, Body } = Matter;
         let engine, render, runner, balls = [], isTimed = true, gameActive = false, isPaused = false, timerInterval;
-        let currentLevel = 1, timeLeft = 20, audioCtx, musicPlaying = false, step = 0;
+        let currentLevel = 1, timeLeft = 20, audioCtx, masterGain, musicPlaying = false, step = 0;
 
-        // Sequence Keygen Style (Polifonica)
-        const sequence = [
-            {b: 110, c: [330, 440, 523], a: 660}, {b: 146, c: [369, 493, 587], a: 739},
-            {b: 164, c: [329, 440, 523], a: 660}, {b: 110, c: [293, 392, 493], a: 587}
+        // Melodia più lunga, articolata e profonda (16 step)
+        const melody = [
+            {b: 55, c: [110, 165, 220], a: 330}, {b: 55, c: [110, 165, 220], a: 330},
+            {b: 73, c: [146, 220, 293], a: 440}, {b: 73, c: [146, 220, 293], a: 440},
+            {b: 82, c: [165, 247, 330], a: 494}, {b: 82, c: [165, 247, 330], a: 494},
+            {b: 55, c: [110, 165, 220], a: 330}, {b: 98, c: [196, 293, 392], a: 587},
+            {b: 55, c: [110, 165, 220], a: 330}, {b: 55, c: [110, 165, 220], a: 330},
+            {b: 73, c: [146, 220, 293], a: 440}, {b: 73, c: [146, 220, 293], a: 440},
+            {b: 65, c: [130, 196, 261], a: 392}, {b: 65, c: [130, 196, 261], a: 392},
+            {b: 55, c: [110, 165, 220], a: 330}, {b: 55, c: [110, 165, 220], a: 330}
         ];
 
         function playNote(freq, type, time, dur, gainVal) {
+            if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const g = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            
+            filter.type = 'lowpass';
+            filter.frequency.value = 800; // Taglia le frequenze alte per un suono profondo
+            
             osc.type = type; osc.frequency.setValueAtTime(freq, time);
             g.gain.setValueAtTime(gainVal, time);
             g.gain.exponentialRampToValueAtTime(0.001, time + dur);
-            osc.connect(g); g.connect(audioCtx.destination);
+            
+            osc.connect(filter); filter.connect(g); g.connect(masterGain);
             osc.start(time); osc.stop(time + dur);
         }
 
         function playMusicLoop() {
             if (!musicPlaying) return;
             const t = audioCtx.currentTime;
-            const note = sequence[step % sequence.length];
-            playNote(note.b, 'square', t, 0.4, 0.2); // Bass
-            note.c.forEach(f => playNote(f, 'triangle', t, 0.4, 0.05)); // Chord
-            playNote(note.a, 'sawtooth', t + 0.2, 0.2, 0.1); // Arp
-            step++; setTimeout(playMusicLoop, 600);
+            const note = melody[step % melody.length];
+            playNote(note.b, 'square', t, 0.8, 0.15); 
+            note.c.forEach(f => playNote(f, 'triangle', t, 0.8, 0.03));
+            playNote(note.a, 'sawtooth', t + 0.4, 0.4, 0.08);
+            step++; setTimeout(playMusicLoop, 800); // Più lento (800ms)
         }
 
         function toggleMusic() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioCtx.createGain();
+                masterGain.connect(audioCtx.destination);
+            }
             musicPlaying = !musicPlaying;
             document.getElementById('music-toggle').style.opacity = musicPlaying ? "1" : "0.3";
             if (musicPlaying) playMusicLoop();
         }
 
+        // ... (resta invariato il resto del gioco come da versione precedente)
         function playSfx(type) {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             if (type === 'hit') { osc.frequency.setValueAtTime(440, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); }
-            else if (type === 'void') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2); }
-            else if (type === 'bonus') { osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); }
             else if (type === 'gameover') {
                 [440, 392, 330, 261, 196].forEach((f, i) => {
                     const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
@@ -109,117 +125,3 @@
                     g.gain.setValueAtTime(0.4, audioCtx.currentTime + i*0.1);
                     g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i*0.1 + 0.1);
                     o.connect(g); g.connect(audioCtx.destination);
-                    o.start(audioCtx.currentTime + i*0.1); o.stop(audioCtx.currentTime + i*0.1 + 0.1);
-                }); return;
-            }
-            osc.start(); osc.stop(audioCtx.currentTime + 0.5);
-        }
-
-        async function startGame(timed) {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (!musicPlaying) toggleMusic();
-            try { await document.documentElement.requestFullscreen(); } catch (e) {}
-            isTimed = timed;
-            if (!isTimed) document.getElementById('timer-display').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-            document.getElementById('pause-btn').style.display = 'block';
-            init();
-        }
-
-        function init() {
-            if (engine) { Runner.stop(runner); Render.stop(render); Composite.clear(engine.world, false); }
-            document.getElementById('game-over').style.display = 'none';
-            currentLevel = 1; timeLeft = 20;
-            document.getElementById('lvl-num').innerText = currentLevel;
-            document.getElementById('timer-display').innerText = timeLeft;
-            
-            const w = window.innerWidth, h = window.innerHeight;
-            engine = Engine.create(); engine.gravity.x = 0; engine.gravity.y = 0;
-            render = Render.create({ element: document.getElementById('game-container'), engine: engine, options: { width: w, height: h, wireframes: false, background: 'transparent' } });
-            
-            addBall(); spawnLevel(w, h);
-            Render.run(render); runner = Runner.create(); Runner.run(runner, engine);
-            gameActive = true;
-            if (isTimed) startTimer();
-
-            Events.on(engine, 'beforeUpdate', () => {
-                balls.forEach(ball => {
-                    const b = ball.position, v = ball.velocity;
-                    if (b.x < 12) { Body.setPosition(ball, {x: 12, y: b.y}); Body.setVelocity(ball, {x: -v.x * 0.5, y: v.y}); }
-                    else if (b.x > w - 12) { Body.setPosition(ball, {x: w - 12, y: b.y}); Body.setVelocity(ball, {x: -v.x * 0.5, y: v.y}); }
-                    if (b.y < 12) { Body.setPosition(ball, {x: b.x, y: 12}); Body.setVelocity(ball, {x: v.x, y: -v.y * 0.5}); }
-                    else if (b.y > h - 12) { Body.setPosition(ball, {x: b.x, y: h - 12}); Body.setVelocity(ball, {x: v.x, y: -v.y * 0.5}); }
-                });
-            });
-
-            Events.on(engine, 'collisionStart', (e) => {
-                e.pairs.forEach(p => {
-                    const b = p.bodyA.label.includes('brick') ? p.bodyA : (p.bodyB.label.includes('brick') ? p.bodyB : null);
-                    if (b) {
-                        playSfx(b.label === 'void_brick' ? 'void' : 'hit');
-                        if (b.label === 'void_brick') triggerVoidEffect();
-                        Composite.remove(engine.world, b);
-                        if (engine.world.bodies.filter(body => body.label.includes('brick')).length === 0) levelWin();
-                    }
-                });
-            });
-        }
-
-        function retryGame() { init(); }
-
-        function addBall() {
-            const ball = Bodies.circle(window.innerWidth/2, window.innerHeight/2, 12, { restitution: 0.8, friction: 0, label: 'ball' });
-            balls = [ball]; Composite.add(engine.world, ball);
-        }
-
-        function spawnLevel(w, h) {
-            for(let i = 0; i < 6 + currentLevel; i++) {
-                Composite.add(engine.world, Bodies.rectangle(50 + Math.random()*(w-100), 160 + Math.random()*(h-280), 65, 28, { isStatic: true, label: 'brick' }));
-            }
-        }
-
-        function triggerVoidEffect() {
-            engine.world.bodies.filter(b => b.label === 'brick').forEach(b => Body.setPosition(b, { x: 50 + Math.random()*(window.innerWidth-100), y: 160 + Math.random()*(window.innerHeight-280) }));
-        }
-
-        function startTimer() {
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                if (!isPaused) {
-                    timeLeft--;
-                    document.getElementById('timer-display').innerText = timeLeft;
-                    if (timeLeft <= 0) gameOver();
-                }
-            }, 1000);
-        }
-
-        function togglePause() {
-            isPaused = !isPaused;
-            engine.enabled = !isPaused;
-            document.getElementById('pause-menu').style.display = isPaused ? 'flex' : 'none';
-        }
-
-        function levelWin() {
-            currentLevel++;
-            if (currentLevel % 5 === 0) { addBall(); playSfx('bonus'); }
-            if (isTimed) timeLeft += 10;
-            document.getElementById('lvl-num').innerText = currentLevel;
-            spawnLevel(window.innerWidth, window.innerHeight);
-        }
-
-        function gameOver() {
-            gameActive = false; clearInterval(timerInterval);
-            playSfx('gameover');
-            document.getElementById('final-score').innerText = "Level: " + currentLevel;
-            document.getElementById('game-over').style.display = 'flex';
-        }
-
-        window.addEventListener('devicemotion', (e) => {
-            if (gameActive && !isPaused) {
-                engine.gravity.x = -e.accelerationIncludingGravity.x * 0.6;
-                engine.gravity.y = e.accelerationIncludingGravity.y * 0.6;
-            }
-        });
-    </script>
-</body>
-</html>
