@@ -18,7 +18,9 @@
         #timer-display { font-size: 3.5rem; font-weight: 200; letter-spacing: 4px; line-height: 1; }
         
         #pause-btn { position: absolute; top: 20px; left: 20px; z-index: 20; padding: 10px 20px; background: #333; border-radius: 20px; pointer-events: auto; cursor: pointer; font-size: 0.7rem; letter-spacing: 2px; }
-        #music-btn { position: absolute; top: 20px; right: 20px; z-index: 20; padding: 10px 20px; background: #333; border-radius: 20px; pointer-events: auto; cursor: pointer; font-size: 0.7rem; letter-spacing: 2px; }
+
+        /* Pulsante Musica aggiunto come cerchio fisso */
+        #music-btn { position: fixed; top: 20px; right: 20px; z-index: 999; width: 50px; height: 50px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; border: 1px solid #444; }
 
         .menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #000; z-index: 100; text-align: center; pointer-events: auto; }
         h1 { font-weight: 100; letter-spacing: 12px; margin-bottom: 40px; text-transform: uppercase; }
@@ -28,8 +30,9 @@
 </head>
 <body>
 
+    <div id="music-btn" onclick="toggleMusic()">♪</div>
+
     <div id="game-container">
-        <div id="music-btn" onclick="toggleMusic()">MUSIC: OFF</div>
         <div id="ui-layer">
             <div id="lvl-tag">Level <span id="lvl-num">1</span></div>
             <div id="timer-display">20</div>
@@ -51,7 +54,7 @@
         <div id="game-over" class="menu" style="display:none;">
             <h1 style="color: #ff3b30; letter-spacing: 8px;">Time Out</h1>
             <div id="final-score" class="stat-value">0</div>
-            <button onclick="resetGame()">Retry</button>
+            <button onclick="retryGame()">Retry</button>
             <button onclick="location.reload()">Quit</button>
         </div>
     </div>
@@ -62,44 +65,26 @@
         let currentLevel = 1, timeLeft = 20;
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        // Logica Musica aggiunta
-        let bgmSource = null;
-        let musicOn = false;
-
+        // Logica musica (aggiunta senza toccare il resto)
+        let bgmOsc = null, bgmGain = null, musicActive = false;
         function toggleMusic() {
-            musicOn = !musicOn;
-            const btn = document.getElementById('music-btn');
-            btn.innerText = musicOn ? "MUSIC: ON" : "MUSIC: OFF";
-            
-            if (musicOn) {
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                bgmSource = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                bgmSource.type = 'sine';
-                bgmSource.frequency.value = 110;
-                gain.gain.value = 0.05;
-                bgmSource.connect(gain);
-                gain.connect(audioCtx.destination);
-                bgmSource.start();
-            } else {
-                if (bgmSource) {
-                    bgmSource.stop();
-                    bgmSource = null;
-                }
-            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            musicActive = !musicActive;
+            document.getElementById('music-btn').style.opacity = musicActive ? "1" : "0.5";
+            if(musicActive) {
+                bgmOsc = audioCtx.createOscillator();
+                bgmGain = audioCtx.createGain();
+                bgmOsc.type = 'sine'; bgmOsc.frequency.value = 110;
+                bgmGain.gain.value = 0.05;
+                bgmOsc.connect(bgmGain); bgmGain.connect(audioCtx.destination);
+                bgmOsc.start();
+            } else if(bgmOsc) { bgmOsc.stop(); bgmOsc = null; }
         }
 
-        // Reset completo per il tasto Retry
-        function resetGame() {
-            currentLevel = 1;
-            timeLeft = 20;
+        function retryGame() {
+            currentLevel = 1; timeLeft = 20;
             document.getElementById('game-over').style.display = 'none';
-            // Pulisci il mondo precedente se esiste
-            if (engine) {
-                Runner.stop(runner);
-                Render.stop(render);
-                Composite.clear(engine.world, false);
-            }
+            if (engine) { Runner.stop(runner); Render.stop(render); Composite.clear(engine.world, false); }
             init();
         }
 
@@ -152,8 +137,7 @@
             engine = Engine.create(); engine.gravity.x = 0; engine.gravity.y = 0;
             render = Render.create({ element: document.getElementById('game-container'), engine: engine, options: { width: w, height: h, wireframes: false, background: 'transparent', pixelRatio: window.devicePixelRatio } });
             
-            // Ripristino corretto della lista palle ad ogni avvio
-            balls = [];
+            balls = []; // Assicurato reset array
             addBall();
             spawnLevel(w, h);
             Render.run(render);
@@ -212,21 +196,10 @@
             document.getElementById('pause-menu').style.display = isPaused ? 'flex' : 'none';
         }
 
-        function startTimer() { 
-            clearInterval(timerInterval); 
-            timerInterval = setInterval(() => { 
-                timeLeft--; 
-                document.getElementById('timer-display').innerText = timeLeft; 
-                if (timeLeft <= 0) gameOver(); 
-            }, 1000); 
-        }
-
+        function startTimer() { clearInterval(timerInterval); timerInterval = setInterval(() => { timeLeft--; document.getElementById('timer-display').innerText = timeLeft; if (timeLeft <= 0) gameOver(); }, 1000); }
         function levelWin() { 
             currentLevel++; 
-            if (currentLevel % 5 === 0) {
-                addBall();
-                playSfx('bonus');
-            }
+            if (currentLevel % 5 === 0) { addBall(); playSfx('bonus'); }
             if (isTimed) timeLeft += Math.max(2, 12 - currentLevel); 
             document.getElementById('lvl-num').innerText = currentLevel; 
             spawnLevel(getVpWidth(), getVpHeight()); 
