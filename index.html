@@ -188,27 +188,39 @@ async function resetGame() {
         }
 
         async function startGame(timed) {
-    // 1. Chiedi il permesso per il giroscopio (SPECIFICO PER iOS)
+    // 1. Gestione Audio Context (Essenziale per iOS)
+    if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+    }
+
+    // 2. Richiesta Permessi Giroscopio (Solo iOS)
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         try {
             const permissionState = await DeviceMotionEvent.requestPermission();
             if (permissionState !== 'granted') {
-                alert("Permesso al giroscopio negato. Il gioco non può muoversi.");
-                return;
+                console.log("Permesso giroscopio negato");
             }
         } catch (e) {
-            console.error("Errore nel chiedere i permessi:", e);
+            console.error("Errore permessi sensori:", e);
         }
     }
 
-    // 2. Continua con il resto del codice originale
-    await audioCtx.resume();
-    try { await document.documentElement.requestFullscreen(); } catch (e) {}
+    // 3. Fullscreen (Solo se è supportato, evita errori su iOS)
+    if (document.documentElement.requestFullscreen) {
+        try { await document.documentElement.requestFullscreen(); } catch (e) { console.log("Fullscreen negato"); }
+    }
+
+    // 4. Avvio logica
     isTimed = timed;
     if (!isTimed) document.getElementById('timer-display').style.display = 'none';
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-btn').style.display = 'block';
-    if(musicOn) startBGM();
+    
+    // Avvia la musica solo DOPO che il contesto audio è attivo
+    if (musicOn) {
+        startBGM();
+    }
+    
     init();
 }
 
