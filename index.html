@@ -130,15 +130,25 @@
             document.getElementById('timer-display').style.display = 'block';
         }
 
-        function resetGame() {
+        async function resetGame() {
+            // 1. Fermiamo tutto subito
             stopBGM();
             if (render && render.canvas) render.canvas.remove();
+            
+            // 2. Reset immediato della UI (non asincrono)
             currentLevel = 1;
             timeLeft = 20;
             document.getElementById('lvl-num').innerText = currentLevel;
             document.getElementById('timer-display').innerText = timeLeft;
             document.getElementById('game-over').style.display = 'none';
             document.getElementById('pause-btn').style.display = 'block';
+
+            // 3. Piccola pausa per liberare il thread del browser prima di ripartire
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // 4. Riavvio con Fullscreen forzato
+            try { await document.documentElement.requestFullscreen(); } catch (e) {}
+            
             init();
             if(musicOn) startBGM();
         }
