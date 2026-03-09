@@ -252,7 +252,7 @@ async function resetGame() {
         }
 
         function addBall() {
-            const ball = Bodies.circle(getVpWidth()/2, getVpHeight()/2, 12, { restitution: 0.8, friction: 0, frictionAir: 0, label: 'ball', render: { fillStyle: '#ffffff' } });
+            const ball = Bodies.circle(getVpWidth()/2, getVpHeight()/2, 12, { restitution: 0.9, friction: 0, frictionAir: 0, label: 'ball', render: { fillStyle: '#ffffff' } });
             balls.push(ball);
             Composite.add(engine.world, ball);
         }
