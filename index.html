@@ -19,9 +19,10 @@
         
         #pause-btn { position: absolute; top: 20px; left: 20px; z-index: 20; padding: 10px 20px; background: #333; border-radius: 20px; pointer-events: auto; cursor: pointer; font-size: 0.7rem; letter-spacing: 2px; }
         
-        #music-btn { position: absolute; top: 20px; right: 20px; z-index: 20; padding: 10px 20px; background: #333; border-radius: 20px; pointer-events: auto; cursor: pointer; font-size: 0.7rem; letter-spacing: 2px; }
+        /* Z-INDEX AUMENTATO PER STARE SOPRA I MENU */
+        #music-btn { position: absolute; top: 20px; right: 20px; z-index: 1000; padding: 10px 20px; background: #333; border-radius: 20px; pointer-events: auto; cursor: pointer; font-size: 0.7rem; letter-spacing: 2px; }
 
-        .menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #000; z-index: 100; text-align: center; pointer-events: auto; }
+        .menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #000; z-index: 500; text-align: center; pointer-events: auto; }
         h1 { font-weight: 100; letter-spacing: 12px; margin-bottom: 40px; text-transform: uppercase; }
         .stat-value { font-size: 1.5rem; font-weight: 300; margin-bottom: 20px; }
         button { margin: 10px; padding: 16px 40px; background: white; color: black; border: none; border-radius: 25px; font-size: 0.9rem; font-weight: bold; letter-spacing: 4px; cursor: pointer; text-transform: uppercase; }
@@ -64,14 +65,12 @@
         let currentLevel = 1, timeLeft = 20;
         
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // CORREZIONE: Dichiarate solo una volta le variabili globali necessarie
         let bgmInterval = null;
         let musicOn = true;
         let noteCounter = 0;
 
         function startBGM() {
-            if (bgmInterval) return;
+            if (bgmInterval || !musicOn) return;
 
             const melody = [330, 392, 440, 523, 440, 392, 330, 294, 262, 294, 330, 262, 196, 220, 262, 330];
             const bass = [165, 147, 131, 196];
@@ -83,7 +82,7 @@
                 const gainMel = audioCtx.createGain();
                 oscMel.type = 'triangle';
                 oscMel.frequency.setValueAtTime(melody[noteCounter % 16], time);
-                gainMel.gain.setValueAtTime(0.08, time);
+                gainMel.gain.setValueAtTime(0.2, time); // Volume alzato a 0.2
                 gainMel.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
                 oscMel.connect(gainMel);
                 gainMel.connect(audioCtx.destination);
@@ -94,7 +93,7 @@
                     const gainBass = audioCtx.createGain();
                     oscBass.type = 'square';
                     oscBass.frequency.setValueAtTime(bass[(noteCounter / 4) % 4] / 2, time);
-                    gainBass.gain.setValueAtTime(0.03, time);
+                    gainBass.gain.setValueAtTime(0.1, time); // Volume alzato a 0.1
                     gainBass.gain.exponentialRampToValueAtTime(0.001, time + 0.6);
                     oscBass.connect(gainBass);
                     gainBass.connect(audioCtx.destination);
@@ -104,15 +103,17 @@
             }, 300);
         }
 
-        function toggleMusic() {
-            musicOn = !musicOn;
-            document.getElementById('music-btn').innerText = musicOn ? "MUSIC: ON" : "MUSIC: OFF";
-            if (musicOn) {
-                startBGM();
-            } else if (bgmInterval) {
+        function stopBGM() {
+            if (bgmInterval) {
                 clearInterval(bgmInterval);
                 bgmInterval = null;
             }
+        }
+
+        function toggleMusic() {
+            musicOn = !musicOn;
+            document.getElementById('music-btn').innerText = musicOn ? "MUSIC: ON" : "MUSIC: OFF";
+            musicOn ? startBGM() : stopBGM();
         }
 
         function resetGame() {
@@ -150,9 +151,7 @@
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('pause-btn').style.display = 'block';
             
-            // Avvio automatico musica
             if(musicOn) startBGM();
-            
             init();
         }
 
@@ -230,6 +229,7 @@
         }
         function gameOver() {
             gameActive = false; clearInterval(timerInterval); Runner.stop(runner);
+            stopBGM(); // FERMA MUSICA AL GAME OVER
             playSfx('gameover');
             document.getElementById('final-score').innerText = "Level: " + currentLevel;
             document.getElementById('game-over').style.display = 'flex';
