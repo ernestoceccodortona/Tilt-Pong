@@ -108,50 +108,62 @@
             musicOn ? startBGM() : stopBGM();
         }
 
-        function quitToMenu() {
-            gameActive = false;
-            isPaused = false;
-            stopBGM();
-            clearInterval(timerInterval);
-            if (runner) Runner.stop(runner);
-            if (render) {
-                Render.stop(render);
-                if (render.canvas) render.canvas.remove();
-                render = null;
-            }
-            document.getElementById('game-over').style.display = 'none';
-            document.getElementById('pause-menu').style.display = 'none';
-            document.getElementById('pause-btn').style.display = 'none';
-            document.getElementById('overlay').style.display = 'flex';
-            currentLevel = 1;
-            timeLeft = 20;
-            document.getElementById('lvl-num').innerText = currentLevel;
-            document.getElementById('timer-display').innerText = timeLeft;
-            document.getElementById('timer-display').style.display = 'block';
-        }
+        // Aggiungi questa funzione di supporto per pulire davvero tutto
+function cleanupGame() {
+    gameActive = false;
+    clearInterval(timerInterval);
+    stopBGM();
+    
+    if (runner) {
+        Runner.stop(runner);
+        runner = null;
+    }
+    
+    if (render) {
+        Render.stop(render);
+        // Rimuoviamo il canvas dal DOM
+        if (render.canvas) render.canvas.remove();
+        render = null;
+    }
+    
+    if (engine) {
+        // Pulisce tutti i corpi e i vincoli
+        Composite.clear(engine.world, false);
+        engine = null;
+    }
+    
+    // Reset grafico e variabili
+    currentLevel = 1;
+    timeLeft = 20;
+    document.getElementById('lvl-num').innerText = currentLevel;
+    document.getElementById('timer-display').innerText = timeLeft;
+    document.getElementById('timer-display').style.display = 'block';
+}
 
-        async function resetGame() {
-            // 1. Fermiamo tutto subito
-            stopBGM();
-            if (render && render.canvas) render.canvas.remove();
-            
-            // 2. Reset immediato della UI (non asincrono)
-            currentLevel = 1;
-            timeLeft = 20;
-            document.getElementById('lvl-num').innerText = currentLevel;
-            document.getElementById('timer-display').innerText = timeLeft;
-            document.getElementById('game-over').style.display = 'none';
-            document.getElementById('pause-btn').style.display = 'block';
+function quitToMenu() {
+    cleanupGame(); // Usa la nuova funzione di pulizia
+    document.getElementById('game-over').style.display = 'none';
+    document.getElementById('pause-menu').style.display = 'none';
+    document.getElementById('pause-btn').style.display = 'none';
+    document.getElementById('overlay').style.display = 'flex';
+}
 
-            // 3. Piccola pausa per liberare il thread del browser prima di ripartire
-            await new Promise(resolve => setTimeout(resolve, 100));
+async function resetGame() {
+    // 1. Pulisci tutto prima di ripartire
+    cleanupGame();
+    
+    // 2. Prepariamo la UI
+    document.getElementById('game-over').style.display = 'none';
+    document.getElementById('pause-btn').style.display = 'block';
 
-            // 4. Riavvio con Fullscreen forzato
-            try { await document.documentElement.requestFullscreen(); } catch (e) {}
-            
-            init();
-            if(musicOn) startBGM();
-        }
+    // 3. Piccola pausa per il Garbage Collector del browser
+    await new Promise(resolve => setTimeout(resolve, 150));
+
+    // 4. Riavvio
+    try { await document.documentElement.requestFullscreen(); } catch (e) {}
+    init();
+    if(musicOn) startBGM();
+}
 
         function togglePause() {
             isPaused = !isPaused;
