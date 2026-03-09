@@ -200,13 +200,34 @@ async function resetGame() {
 
         function init() {
             const w = getVpWidth(), h = getVpHeight();
-            engine = Engine.create(); engine.gravity.x = 0; engine.gravity.y = 0;
-            render = Render.create({ element: document.getElementById('game-container'), engine: engine, options: { width: w, height: h, wireframes: false, background: 'transparent', pixelRatio: window.devicePixelRatio } });
-            balls = []; addBall(); spawnLevel(w, h);
-            Render.run(render); runner = Runner.create(); Runner.run(runner, engine);
+            
+            // 1. Assicurati che l'engine sia attivo
+            engine = Engine.create(); 
+            engine.enabled = true; // FORZA ATTIVAZIONE
+            engine.gravity.x = 0; 
+            engine.gravity.y = 0;
+            
+            render = Render.create({ 
+                element: document.getElementById('game-container'), 
+                engine: engine, 
+                options: { width: w, height: h, wireframes: false, background: 'transparent', pixelRatio: window.devicePixelRatio } 
+            });
+            
+            balls = []; 
+            addBall(); 
+            spawnLevel(w, h);
+            
+            Render.run(render); 
+            runner = Runner.create(); 
+            
+            // 2. Forza il runner a collegarsi all'engine appena creato
+            Runner.run(runner, engine);
+            
             gameActive = true;
+            isPaused = false; // Forza lo stato di non pausa
+            
             if (isTimed) startTimer();
-
+            // ... resto del codice (Events.on, ecc.)
             Events.on(engine, 'beforeUpdate', () => {
                 balls.forEach(ball => {
                     const b = ball.position, v = ball.velocity;
