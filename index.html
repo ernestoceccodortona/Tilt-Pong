@@ -64,18 +64,49 @@
         let currentLevel = 1, timeLeft = 20;
         
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let bgmOsc = null, bgmGain = null, musicOn = true;
+        let bgmInterval = null, musicOn = true;
+
+        let bgmInterval = null;
+        let noteCounter = 0;
 
         function startBGM() {
-            if (bgmOsc) return;
-            bgmOsc = audioCtx.createOscillator();
-            bgmGain = audioCtx.createGain();
-            bgmOsc.type = 'sine';
-            bgmOsc.frequency.value = 110;
-            bgmGain.gain.value = 0.1;
-            bgmOsc.connect(bgmGain);
-            bgmGain.connect(audioCtx.destination);
-            bgmOsc.start();
+            if (bgmInterval) return;
+
+            // Melodia ispirata a un tema fantasy (16 note)
+            const melody = [330, 392, 440, 523, 440, 392, 330, 294, 262, 294, 330, 262, 196, 220, 262, 330];
+            const bass = [165, 147, 131, 196]; // Basso di supporto ogni 4 note
+
+            bgmInterval = setInterval(() => {
+                const time = audioCtx.currentTime;
+
+                // Voce 1: Melodia (Triangle wave per un suono tipo flauto/arpa sintetica)
+                const oscMel = audioCtx.createOscillator();
+                const gainMel = audioCtx.createGain();
+                oscMel.type = 'triangle';
+                oscMel.frequency.setValueAtTime(melody[noteCounter % 16], time);
+                gainMel.gain.setValueAtTime(0.08, time);
+                gainMel.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+                oscMel.connect(gainMel);
+                gainMel.connect(audioCtx.destination);
+                oscMel.start(); oscMel.stop(time + 0.4);
+
+                // Voce 2: Basso (Square wave leggera per profondità)
+                if (noteCounter % 4 === 0) {
+                    const oscBass = audioCtx.createOscillator();
+                    const gainBass = audioCtx.createGain();
+                    oscBass.type = 'square';
+                    oscBass.frequency.setValueAtTime(bass[(noteCounter / 4) % 4] / 2, time);
+                    gainBass.gain.setValueAtTime(0.03, time);
+                    gainBass.gain.exponentialRampToValueAtTime(0.001, time + 0.6);
+                    oscBass.connect(gainBass);
+                    gainBass.connect(audioCtx.destination);
+                    oscBass.start(); oscBass.stop(time + 0.6);
+                }
+
+                noteCounter++;
+            }, 300); // Velocità del tempo
+
+            bgmOsc = { stop: () => { clearInterval(bgmInterval); bgmInterval = null; } };
         }
 
         function toggleMusic() {
