@@ -8,7 +8,7 @@
     <style>
         :root { --bg-color: #000; }
         * { box-sizing: border-box; -webkit-touch-callout: none; margin: 0; padding: 0; touch-action: none; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: var(--bg-color); font-family: -apple-system, sans-serif; color: white; user-select: none; position: fixed; transition: background 0.8s ease; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: var(--bg-color); font-family: -apple-system, sans-serif; color: white; user-select: none; position: fixed; }
         
         #game-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; }
         canvas { display: block !important; width: 100% !important; height: 100% !important; z-index: 2; border: none !important; }
@@ -19,7 +19,6 @@
         
         #pause-btn { position: absolute; top: 20px; left: 20px; z-index: 20; padding: 10px 20px; background: #333; border-radius: 20px; pointer-events: auto; cursor: pointer; font-size: 0.7rem; letter-spacing: 2px; }
         
-        /* Pulsante Musica - Stile cerchio identico al pause */
         #music-btn { position: absolute; top: 20px; right: 20px; z-index: 20; padding: 10px 20px; background: #333; border-radius: 20px; pointer-events: auto; cursor: pointer; font-size: 0.7rem; letter-spacing: 2px; }
 
         .menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #000; z-index: 100; text-align: center; pointer-events: auto; }
@@ -31,7 +30,7 @@
 <body>
 
     <div id="game-container">
-        <div id="music-btn" onclick="toggleMusic()">MUSIC</div>
+        <div id="music-btn" onclick="toggleMusic()">MUSIC: ON</div>
         
         <div id="ui-layer">
             <div id="lvl-tag">Level <span id="lvl-num">1</span></div>
@@ -64,40 +63,49 @@
         let engine, render, runner, balls = [], isTimed = true, gameActive = false, isPaused = false, timerInterval;
         let currentLevel = 1, timeLeft = 20;
         
-        // Audio setup base
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let bgmOsc = null, musicOn = false;
+        let bgmOsc = null, bgmGain = null, musicOn = true;
+
+        function startBGM() {
+            if (bgmOsc) return;
+            bgmOsc = audioCtx.createOscillator();
+            bgmGain = audioCtx.createGain();
+            bgmOsc.type = 'sine';
+            bgmOsc.frequency.value = 110;
+            bgmGain.gain.value = 0.1;
+            bgmOsc.connect(bgmGain);
+            bgmGain.connect(audioCtx.destination);
+            bgmOsc.start();
+        }
 
         function toggleMusic() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
             musicOn = !musicOn;
-            document.getElementById('music-btn').innerText = musicOn ? "MUTE" : "MUSIC";
+            document.getElementById('music-btn').innerText = musicOn ? "MUSIC: ON" : "MUSIC: OFF";
             if (musicOn) {
-                bgmOsc = audioCtx.createOscillator();
-                let gain = audioCtx.createGain();
-                bgmOsc.connect(gain); gain.connect(audioCtx.destination);
-                bgmOsc.frequency.value = 110; gain.gain.value = 0.1;
-                bgmOsc.start();
-            } else if (bgmOsc) { bgmOsc.stop(); bgmOsc = null; }
+                startBGM();
+            } else if (bgmOsc) {
+                bgmOsc.stop();
+                bgmOsc = null;
+            }
         }
 
         function resetGame() {
-            // Ripristino diretto per evitare freeze
             currentLevel = 1; timeLeft = 20;
             document.getElementById('game-over').style.display = 'none';
             if (engine) {
-                Engine.clear(engine);
+                Runner.stop(runner);
                 Render.stop(render);
+                Composite.clear(engine.world, true);
                 render.canvas.remove();
             }
             init();
+            if(musicOn) startBGM();
         }
 
         function getVpWidth() { return window.visualViewport ? window.visualViewport.width : window.innerWidth; }
         function getVpHeight() { return window.visualViewport ? window.visualViewport.height : window.innerHeight; }
 
         function playSfx(type) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
@@ -109,11 +117,16 @@
         }
 
         async function startGame(timed) {
+            await audioCtx.resume();
             try { await document.documentElement.requestFullscreen(); } catch (e) {}
             isTimed = timed;
             if (!isTimed) document.getElementById('timer-display').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('pause-btn').style.display = 'block';
+            
+            // Avvio automatico musica
+            if(musicOn) startBGM();
+            
             init();
         }
 
