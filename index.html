@@ -5,27 +5,150 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Tilt Pong</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-    <style>
-        :root { --bg-color: #000; }
-        * { box-sizing: border-box; -webkit-touch-callout: none; margin: 0; padding: 0; touch-action: none; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: var(--bg-color); font-family: -apple-system, sans-serif; color: white; user-select: none; position: fixed; }
-        
-        #game-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; }
-        canvas { display: block !important; width: 100% !important; height: 100% !important; z-index: 2; border: none !important; }
-        
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; align-items: center; padding-top: 40px; }
-        #lvl-tag { font-size: 0.7rem; letter-spacing: 5px; opacity: 0.5; text-transform: uppercase; margin-bottom: 5px; }
-        #timer-display { font-size: 3.5rem; font-weight: 200; letter-spacing: 4px; line-height: 1; }
-        
-        #pause-btn { position: absolute; top: 20px; left: 20px; z-index: 20; padding: 10px 20px; background: #333; border-radius: 20px; pointer-events: auto; cursor: pointer; font-size: 0.7rem; letter-spacing: 2px; }
-        
-        #music-btn { position: absolute; top: 20px; right: 20px; z-index: 1000; padding: 10px 20px; background: #333; border-radius: 20px; pointer-events: auto; cursor: pointer; font-size: 0.7rem; letter-spacing: 2px; }
+    <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
 
-        .menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #000; z-index: 500; text-align: center; pointer-events: auto; }
-        h1 { font-weight: 100; letter-spacing: 12px; margin-bottom: 40px; text-transform: uppercase; }
-        .stat-value { font-size: 1.5rem; font-weight: 300; margin-bottom: 20px; }
-        button { margin: 10px; padding: 16px 40px; background: white; color: black; border: none; border-radius: 25px; font-size: 0.9rem; font-weight: bold; letter-spacing: 4px; cursor: pointer; text-transform: uppercase; }
-    </style>
+<style>
+    :root { --bg-color: #000; }
+    * { 
+        box-sizing: border-box; 
+        -webkit-touch-callout: none; 
+        margin: 0; 
+        padding: 0; 
+        touch-action: none; 
+    }
+    
+    body, html { 
+        width: 100%; 
+        height: 100%; 
+        overflow: hidden; 
+        background: var(--bg-color); 
+        font-family: 'Plus Jakarta Sans', sans-serif; 
+        color: white; 
+        user-select: none; 
+        position: fixed; 
+    }
+    
+    #game-container { position: relative; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+    canvas { display: block !important; width: 100% !important; height: 100% !important; z-index: 2; border: none !important; position: absolute; top: 0; left: 0; }
+    
+    #ui-layer { 
+        position: absolute; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        pointer-events: none; 
+        z-index: 10; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        padding-top: 40px; 
+    }
+    
+    #lvl-tag { 
+        font-size: 0.7rem; 
+        letter-spacing: 4px; 
+        opacity: 0.6; 
+        text-transform: uppercase; 
+        margin-bottom: 5px; 
+        font-weight: 600;
+    }
+    
+    #timer-display { 
+        font-size: 4.5rem; 
+        font-weight: 300; /* Leggero ma leggibile grazie al design del font */
+        letter-spacing: 1px; /* Qui i numeri respirano molto meglio */
+        line-height: 1; 
+    }
+    
+    #pause-btn, #music-btn { 
+        position: absolute; 
+        top: 20px; 
+        z-index: 1000; 
+        padding: 10px 18px; 
+        background: rgba(255, 255, 255, 0.08); 
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 12px; /* Meno arrotondato, più moderno */
+        pointer-events: auto; 
+        cursor: pointer; 
+        font-size: 0.65rem; 
+        letter-spacing: 1.5px; 
+        font-weight: 700;
+        text-transform: uppercase;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    #pause-btn { left: 20px; }
+    #music-btn { right: 20px; }
+
+    .menu { 
+        position: absolute; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        display: flex; 
+        flex-direction: column; 
+        justify-content: center; 
+        align-items: center; 
+        background: rgba(0, 0, 0, 0);
+        z-index: 3; 
+        text-align: center; 
+        pointer-events: auto; 
+    }
+
+    #overlay.menu { background: rgba(0, 0, 0, 0); } /* Molto trasparente nella Home */
+    #pause-menu.menu, #game-over.menu { background: #000; } /* Neri pieni durante gioco */
+    
+    h1 { 
+        font-weight: 800; 
+        letter-spacing: 8px; 
+        margin-bottom: 40px; 
+        text-transform: uppercase; 
+        font-size: 2.4rem;
+    }
+    
+    .stat-value { 
+        font-size: 1.3rem; 
+        font-weight: 500; 
+        margin-bottom: 30px; 
+        letter-spacing: 1px;
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    button { 
+        margin: 10px; 
+        padding: 16px 40px; 
+        /* Nuovo stile uniforme */
+        background: rgba(255, 255, 255, 0.08); 
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white; /* Testo bianco */
+        border-radius: 14px; 
+        font-size: 0.85rem; 
+        font-weight: 700; 
+        letter-spacing: 2px; 
+        cursor: pointer; 
+        text-transform: uppercase; 
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    button:active {
+        transform: scale(0.92);
+        background: rgba(255, 255, 255, 0.15); /* Leggero feedback al click */
+    }
+
+    button[onclick="resetGame()"] {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+    
+</style>
 </head>
 <body>
 
@@ -60,6 +183,35 @@
 
     <script>
 
+        // In cima allo script, dopo le costanti iniziali
+PokiSDK.init().then(() => {
+    console.log("Poki SDK pronto");
+    // Comunica a Poki che il caricamento è finito (il menu è visibile)
+    PokiSDK.gameLoadingFinished();
+}).catch(() => {
+    console.log("Poki SDK non caricato");
+});
+
+// FORZA LA MODALITÀ TEST (Aggiungi questa riga)
+PokiSDK.setDebug(true);
+
+
+function handleBgTap(e) {
+    // Cambia il colore solo se il click non è sui bottoni
+    if (e.target.tagName !== 'BUTTON' && e.target.id !== 'music-btn' && e.target.id !== 'pause-btn') {
+        changeBgRandom();
+    }
+}
+
+function enableMenuInteractions() {
+    document.body.addEventListener('click', handleBgTap);
+}
+
+function disableMenuInteractions() {
+    document.body.removeEventListener('click', handleBgTap);
+}
+
+
         // Aggiungi questa variabile di controllo in cima al tuo script
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -74,9 +226,13 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
         let noteCounter = 0;
 
         function startBGM() {
-            if (bgmInterval || !musicOn) return;
-            const melody = [330, 392, 440, 523, 440, 392, 330, 294, 262, 294, 330, 262, 196, 220, 262, 330];
-            const bass = [165, 147, 131, 196];
+    if (bgmInterval || !musicOn) return;
+    
+    // Reset del contatore delle note ogni volta che la musica parte da zero
+    noteCounter = 0; 
+    
+    const melody = [330, 392, 440, 523, 440, 392, 330, 294, 262, 294, 330, 262, 196, 220, 262, 330];
+    const bass = [165, 147, 131, 196];
 
             bgmInterval = setInterval(() => {
                 const time = audioCtx.currentTime;
@@ -115,9 +271,20 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 
         // Aggiungi questa funzione di supporto per pulire davvero tutto
 function cleanupGame() {
+    // Rimuovi TUTTI i canvas presenti nel container
+    const container = document.getElementById('game-container');
+    const canvases = container.querySelectorAll('canvas'); // Nota: querySelectorAll
+    canvases.forEach(c => c.remove());
+
     gameActive = false;
     clearInterval(timerInterval);
+    
+    // Fermiamo l'intervallo e resettiamo la posizione della melodia
     stopBGM();
+    noteCounter = 0;
+    
+    // Reset del colore di sfondo al nero originale
+    document.body.style.setProperty('--bg-color', '#000');
     
     if (runner) {
         Runner.stop(runner);
@@ -146,28 +313,57 @@ function cleanupGame() {
 }
 
 function quitToMenu() {
-    cleanupGame(); // Usa la nuova funzione di pulizia
-    document.getElementById('game-over').style.display = 'none';
-    document.getElementById('pause-menu').style.display = 'none';
+    PokiSDK.gameplayStop();
+    cleanupGame();
+    
+    // Ripristina la visibilità della UI della Home
+    document.getElementById('ui-layer').style.display = 'none'; // Nascondi tag Level e Timer
     document.getElementById('pause-btn').style.display = 'none';
-    document.getElementById('overlay').style.display = 'flex';
+    document.getElementById('pause-menu').style.display = 'none';
+    document.getElementById('game-over').style.display = 'none';
+    document.getElementById('overlay').style.display = 'flex'; // Mostra il menu principale
+    
+    // Forza l'inizializzazione della Home (che crea pallina e attiva listener)
+    init(true); 
 }
 
 async function resetGame() {
-    // 1. Pulisci tutto prima di ripartire
-    cleanupGame();
+    // 1. Chiediamo a Poki di mostrare un annuncio (Commercial Break)
+    // Poki deciderà in automatico se mostrarlo o saltarlo in base alla frequenza
+
+    // Forza lo stop di ogni suono prima del break
+    stopBGM();
     
-    // 2. Prepariamo la UI
-    document.getElementById('game-over').style.display = 'none';
-    document.getElementById('pause-btn').style.display = 'block';
+    PokiSDK.commercialBreak().then(() => {
+        console.log("Fine pubblicità (o saltata): il gioco riprende.");
 
-    // 3. Piccola pausa per il Garbage Collector del browser
-    await new Promise(resolve => setTimeout(resolve, 150));
+        // 2. Pulisci tutto prima di ripartire (il tuo codice originale)
+        cleanupGame();
+        
+        // 3. Prepariamo la UI
+        document.getElementById('game-over').style.display = 'none';
+        document.getElementById('pause-btn').style.display = 'block';
 
-    // 4. Riavvio
-    try { await document.documentElement.requestFullscreen(); } catch (e) {}
-    init();
-    if(musicOn) startBGM();
+        // 4. Piccola pausa per il Garbage Collector
+        setTimeout(async () => {
+            // Proviamo il fullscreen (opzionale su Poki)
+            try { 
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen(); 
+                }
+            } catch (e) {
+                console.log("Fullscreen non disponibile");
+            }
+
+            // 5. Inizializza il motore fisico e gli oggetti
+            init();
+
+            // 6. Avvia la musica e segnala a Poki che il gameplay è iniziato
+            if(musicOn) startBGM();
+            PokiSDK.gameplayStart(); 
+            
+        }, 150);
+    });
 }
 
         function togglePause() {
@@ -193,100 +389,159 @@ async function resetGame() {
         }
 
         async function startGame(timed) {
-    // 1. Gestione Audio Context (Essenziale per iOS)
+    disableMenuInteractions(); // <--- AGGIUNTA FONDAMENTALE
+    PokiSDK.gameplayStart();
+    cleanupGame();
+    
+    // 3. Reset sfondo al nero richiesto
+    document.body.style.setProperty('--bg-color', '#000');
+
+    // 4. Ripristino Audio (indispensabile per mobile)
     if (audioCtx.state === 'suspended') {
         await audioCtx.resume();
     }
 
-    // 2. Richiesta Permessi Giroscopio (Solo iOS)
+    // 5. Richiesta Permessi Giroscopio (iOS 13+)
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         try {
             const permissionState = await DeviceMotionEvent.requestPermission();
-            if (permissionState !== 'granted') {
-                console.log("Permesso giroscopio negato");
-            }
+            if (permissionState !== 'granted') console.log("Permesso giroscopio negato");
         } catch (e) {
             console.error("Errore permessi sensori:", e);
         }
     }
 
-    // 3. Fullscreen (Solo se è supportato, evita errori su iOS)
-    if (document.documentElement.requestFullscreen) {
-        try { await document.documentElement.requestFullscreen(); } catch (e) { console.log("Fullscreen negato"); }
+    // 6. Fullscreen (Tentativo esplicito)
+    try {
+        const el = document.documentElement;
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen(); // Safari
+    } catch (e) {
+        console.log("Fullscreen negato o non supportato");
     }
 
-    // 4. Avvio logica
+    // 7. Configurazione UI
     isTimed = timed;
-    if (!isTimed) document.getElementById('timer-display').style.display = 'none';
+    document.getElementById('timer-display').style.display = isTimed ? 'block' : 'none';
     document.getElementById('overlay').style.display = 'none';
+    
+    // IMPORTANTE: Mostriamo il tasto pausa solo qui
     document.getElementById('pause-btn').style.display = 'block';
     
-    // Avvia la musica solo DOPO che il contesto audio è attivo
-    if (musicOn) {
-        startBGM();
-    }
+    // 8. Avvio Musica e Motore di gioco
+    if (musicOn) startBGM();
     
-    init();
+    // Avvia la logica di gioco (non menu mode)
+    init(false);
 }
 
-        function init() {
-            const w = getVpWidth(), h = getVpHeight();
-            
-            // 1. Assicurati che l'engine sia attivo
-            engine = Engine.create(); 
-            engine.enabled = true; // FORZA ATTIVAZIONE
-            engine.gravity.x = 0; 
-            engine.gravity.y = 0;
-            
-            render = Render.create({ 
-                element: document.getElementById('game-container'), 
-                engine: engine, 
-                options: { width: w, height: h, wireframes: false, background: 'transparent', pixelRatio: window.devicePixelRatio } 
-            });
-            
-            balls = []; 
-            addBall(); 
-            spawnLevel(w, h);
-            
-            Render.run(render); 
-            runner = Runner.create(); 
-            
-            // 2. Forza il runner a collegarsi all'engine appena creato
-            Runner.run(runner, engine);
-            
-            gameActive = true;
-            isPaused = false; // Forza lo stato di non pausa
-            
-            if (isTimed) startTimer();
-            // ... resto del codice (Events.on, ecc.)
-            Events.on(engine, 'beforeUpdate', () => {
-                balls.forEach(ball => {
-                    const b = ball.position, v = ball.velocity;
-                    if (b.x < 12) { Body.setPosition(ball, {x: 12, y: b.y}); Body.setVelocity(ball, {x: -v.x * 0.5, y: v.y}); }
-                    else if (b.x > w - 12) { Body.setPosition(ball, {x: w - 12, y: b.y}); Body.setVelocity(ball, {x: -v.x * 0.5, y: v.y}); }
-                    if (b.y < 12) { Body.setPosition(ball, {x: b.x, y: 12}); Body.setVelocity(ball, {x: v.x, y: -v.y * 0.5}); }
-                    else if (b.y > h - 12) { Body.setPosition(ball, {x: b.x, y: h - 12}); Body.setVelocity(ball, {x: v.x, y: -v.y * 0.5}); }
-                });
-            });
+async function init(isMenuMode = false) {
+    // 1. Pulisci residui
+    const container = document.getElementById('game-container');
+    const existingCanvas = container.querySelector('canvas');
+    if (existingCanvas) existingCanvas.remove(); 
 
-            Events.on(engine, 'collisionStart', (e) => {
-                e.pairs.forEach(p => {
-                    const b = p.bodyA.label.includes('brick') ? p.bodyA : (p.bodyB.label.includes('brick') ? p.bodyB : null);
-                    if (b) {
-                        playSfx(b.label === 'void_brick' ? 'void' : 'hit');
-                        if (b.label === 'void_brick') triggerVoidEffect();
-                        Composite.remove(engine.world, b);
-                        if (engine.world.bodies.filter(body => body.label.includes('brick')).length === 0) levelWin();
-                    }
-                });
+    const w = getVpWidth(), h = getVpHeight();
+    engine = Engine.create();
+    engine.enabled = true;
+    engine.gravity.x = 0; 
+    engine.gravity.y = 0;
+    
+    render = Render.create({ 
+        element: document.getElementById('game-container'), 
+        engine: engine, 
+        options: { width: w, height: h, wireframes: false, background: 'transparent', pixelRatio: window.devicePixelRatio } 
+    });
+    
+    // 2. Setup Pallina (UNA SOLA VOLTA)
+    balls = []; 
+    addBall();
+    
+    Render.run(render); 
+    runner = Runner.create(); 
+    Runner.run(runner, engine);
+    
+    gameActive = true; 
+    isPaused = false;
+
+    // 3. Gestione UI e Logica basata su modalità
+    const uiLayer = document.getElementById('ui-layer');
+    const pauseBtn = document.getElementById('pause-btn');
+
+    if (isMenuMode) {
+        uiLayer.style.display = 'none';
+        pauseBtn.style.display = 'none';
+        enableMenuInteractions();
+    } else {
+        uiLayer.style.display = 'flex';
+        pauseBtn.style.display = 'block';
+        spawnLevel(w, h);
+        if (isTimed) startTimer();
+        disableMenuInteractions();
+    }
+
+    // 4. Collisioni (Aggiungile solo se NON sei nel menu)
+    if (!isMenuMode) {
+        Events.on(engine, 'collisionStart', (e) => {
+            e.pairs.forEach(p => {
+                const b = p.bodyA.label.includes('brick') ? p.bodyA : (p.bodyB.label.includes('brick') ? p.bodyB : null);
+                if (b) {
+                    playSfx(b.label === 'void_brick' ? 'void' : 'hit');
+                    if (b.label === 'void_brick') triggerVoidEffect();
+                    Composite.remove(engine.world, b);
+                    if (engine.world.bodies.filter(body => body.label.includes('brick')).length === 0) levelWin();
+                }
             });
+        });
+    }
+
+    // Gestione fisica continua
+    Events.on(engine, 'beforeUpdate', () => {
+    balls.forEach(ball => {
+        const b = ball.position, v = ball.velocity;
+        const w = getVpWidth(), h = getVpHeight();
+        
+        // Verifica se la pallina è attualmente "fuori" (nei margini)
+        const isCurrentlyTouching = (b.x < 15 || b.x > w - 15 || b.y < 15 || b.y > h - 15);
+
+        if (isCurrentlyTouching) {
+            // Se non stava già suonando, suona ora
+            if (!ball.isColliding) {
+                playGlassSfx();
+                ball.isColliding = true;
+            }
+            
+            // Applica il rimbalzo (la tua logica esistente)
+            if (b.x < 12) { Body.setPosition(ball, {x: 12, y: b.y}); Body.setVelocity(ball, {x: -v.x * 0.5, y: v.y}); }
+            else if (b.x > w - 12) { Body.setPosition(ball, {x: w - 12, y: b.y}); Body.setVelocity(ball, {x: -v.x * 0.5, y: v.y}); }
+            if (b.y < 12) { Body.setPosition(ball, {x: b.x, y: 12}); Body.setVelocity(ball, {x: v.x, y: -v.y * 0.5}); }
+            else if (b.y > h - 12) { Body.setPosition(ball, {x: b.x, y: h - 12}); Body.setVelocity(ball, {x: v.x, y: -v.y * 0.5}); }
+        } else {
+            // Se la pallina è tornata nel campo, resettiamo il flag
+            ball.isColliding = false;
         }
+    });
+});
+
+// Sblocca l'audio anche in modalità menu al primo interazione
+    if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+    }
+
+}
 
         function addBall() {
-            const ball = Bodies.circle(getVpWidth()/2, getVpHeight()/2, 12, { restitution: 0.8, friction: 0, frictionAir: 0, label: 'ball', render: { fillStyle: '#ffffff' } });
-            balls.push(ball);
-            Composite.add(engine.world, ball);
-        }
+    const ball = Bodies.circle(getVpWidth()/2, getVpHeight()/2, 12, { 
+        restitution: 0.8, 
+        friction: 0, 
+        frictionAir: 0, 
+        label: 'ball', 
+        render: { fillStyle: '#ffffff' } 
+    });
+    ball.isColliding = false; // Flag per gestire il suono
+    balls.push(ball);
+    Composite.add(engine.world, ball);
+}
 
         function spawnLevel(w, h) {
             const colors = ['#FF3B30', '#FFCC00', '#34C759', '#007AFF', '#AF52DE'];
@@ -306,10 +561,29 @@ async function resetGame() {
 
         function startTimer() { clearInterval(timerInterval); timerInterval = setInterval(() => { timeLeft--; document.getElementById('timer-display').innerText = timeLeft; if (timeLeft <= 0) gameOver(); }, 1000); }
         function levelWin() { currentLevel++; if (currentLevel % 5 === 0) { addBall(); playSfx('bonus'); } if (isTimed) timeLeft += Math.max(2, 12 - currentLevel); document.getElementById('lvl-num').innerText = currentLevel; spawnLevel(getVpWidth(), getVpHeight()); }
-        function gameOver() { gameActive = false; clearInterval(timerInterval); Runner.stop(runner); stopBGM(); playSfx('gameover'); document.getElementById('final-score').innerText = "Level: " + currentLevel; document.getElementById('game-over').style.display = 'flex'; }
-        
+        function gameOver() { PokiSDK.gameplayStop(); gameActive = false; clearInterval(timerInterval); Runner.stop(runner); stopBGM(); playSfx('gameover'); document.getElementById('final-score').innerText = "Level: " + currentLevel; document.getElementById('game-over').style.display = 'flex'; }
+
+        function playGlassSfx() {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    // Suono cristallino: onda sinusoidale, alta frequenza, decay velocissimo
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1200 + Math.random() * 400, audioCtx.currentTime); // Pitch alto e leggermente variabile
+    
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime); // Molto basso, sottile
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08); // Decay brevissimo
+    
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+}
+
         window.addEventListener('devicemotion', (e) => {
-    if (gameActive && !isPaused) {
+    // Rimosso !isPaused dalla condizione perché nel menu non usiamo la pausa
+    if (gameActive && e.accelerationIncludingGravity) {
         // Se è iOS, invertiamo il segno per allinearlo ad Android
         const multiplier = isIOS ? -1 : 1; 
         
@@ -317,6 +591,46 @@ async function resetGame() {
         engine.gravity.y = multiplier * (e.accelerationIncludingGravity.y * 0.8);
     }
 });
+
+function changeBgRandom() {
+    // Colori con bassa luminosità (es. HSL con L=5% o 10%)
+    const randomHue = Math.floor(Math.random() * 360);
+    document.body.style.setProperty('--bg-color', `hsl(${randomHue}, 40%, 5%)`);
+}
+
+// 2. Forza il Fullscreen al primo tap (spesso i browser lo bloccano al caricamento)
+document.addEventListener('click', function goFullscreen() {
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    document.removeEventListener('click', goFullscreen); // Eseguito solo una volta
+}, { once: true });
+
+
+// Gestione automatica della pausa (richiesta da Poki)
+window.addEventListener('keydown', (ev) => {
+    if (ev.keyCode === 32) { // Esempio: Spazio per mettere in pausa
+        togglePause();
+    }
+});
+
+// In fondo allo script, avvia la "Modalità Menu"
+document.addEventListener("DOMContentLoaded", () => {
+    // Verifica che non sia già stato inizializzato
+    if (!engine) init(true); 
+});
+
+// Se l'utente esce dalla pagina o Poki apre un overlay
+PokiSDK.setDebug(false); // Imposta a true durante lo sviluppo se vuoi log extra
+
+// Questo assicura che il gioco si fermi se Poki prende il controllo
+// (ad esempio durante un annuncio o se la finestra perde focus)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && gameActive && !isPaused) {
+        togglePause();
+    }
+});
+
     </script>
 </body>
 </html>
