@@ -28,11 +28,12 @@
         font-family: 'Plus Jakarta Sans', sans-serif; 
         color: white; 
         user-select: none; 
-        position: fixed; 
+        position: fixed;
+        overscroll-behavior: none;
     }
     
-    #game-container { position: relative; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 1; }
-    canvas { display: block !important; width: 100% !important; height: 100dvh !important; z-index: 2; border: none !important; position: absolute; top: 0; left: 0; }
+    #game-container { position: relative; top: 0; left: 0; width: 100vw; height: 100svh; z-index: 1; }
+    canvas { display: block !important; width: 100% !important; height: 100svh !important; z-index: 2; border: none !important; position: absolute; top: 0; left: 0; overscroll-behavior: none;}
     
     #ui-layer { 
         position: absolute; 
@@ -342,12 +343,23 @@ async function resetGame() {
 }
 
         function togglePause() {
-            isPaused = !isPaused;
-            engine.enabled = !isPaused;
-            if (isPaused) { clearInterval(timerInterval); stopBGM(); }
-            else { if (isTimed) startTimer(); if (musicOn) startBGM(); }
-            document.getElementById('pause-menu').style.display = isPaused ? 'flex' : 'none';
-        }
+    isPaused = !isPaused;
+    engine.enabled = !isPaused;
+    
+    // Freeze/Unfreeze palline
+    balls.forEach(ball => {
+        Body.setStatic(ball, isPaused);
+    });
+
+    if (isPaused) { 
+        clearInterval(timerInterval); 
+        stopBGM(); 
+    } else { 
+        if (isTimed) startTimer(); 
+        if (musicOn) startBGM(); 
+    }
+    document.getElementById('pause-menu').style.display = isPaused ? 'flex' : 'none';
+}
 
         function getVpWidth() { return window.visualViewport ? window.visualViewport.width : window.innerWidth; }
         function getVpHeight() { return window.visualViewport ? window.visualViewport.height : window.innerHeight; }
@@ -401,6 +413,28 @@ async function resetGame() {
     
     init(false);
 }
+
+function resizeCanvas() {
+    if (render && render.canvas) {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        
+        // Aggiorna le dimensioni interne del canvas per Matter.js
+        render.canvas.width = w * window.devicePixelRatio;
+        render.canvas.height = h * window.devicePixelRatio;
+        render.canvas.style.width = w + 'px';
+        render.canvas.style.height = h + 'px';
+        
+        render.options.width = w;
+        render.options.height = h;
+    }
+}
+
+// Ascolta i cambi di orientamento e resize
+window.addEventListener('resize', () => {
+    // Piccolo ritardo per permettere al browser di finire l'animazione fullscreen
+    setTimeout(resizeCanvas, 200);
+});
 
 async function init(isMenuMode = false) {
     const container = document.getElementById('game-container');
@@ -551,12 +585,7 @@ function changeBgRandom() {
     document.body.style.setProperty('--bg-color', `hsl(${randomHue}, 40%, 5%)`);
 }
 
-document.addEventListener('click', function goFullscreen() {
-    const el = document.documentElement;
-    if (el.requestFullscreen) el.requestFullscreen();
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    document.removeEventListener('click', goFullscreen);
-}, { once: true });
+
 
 
 window.addEventListener('keydown', (ev) => {
